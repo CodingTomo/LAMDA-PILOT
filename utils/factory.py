@@ -1,4 +1,4 @@
-def get_model(model_name, args):
+def get_model(model_name, args, outpath):
     name = model_name.lower()
     if name == "simplecil":
         from models.simplecil import Learner
@@ -35,4 +35,4 @@ def get_model(model_name, args):
     else:
         assert 0
     
-    return Learner(args)
+    return Learner(args, outpath)

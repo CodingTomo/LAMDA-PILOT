@@ -7,6 +7,7 @@ from utils.data_manager import DataManager
 from utils.toolkit import count_parameters
 import os
 import numpy as np
+from codecarbon import EmissionsTracker
 
 
 def train(args):
@@ -23,6 +24,7 @@ def _train(args):
 
     init_cls = 0 if args ["init_cls"] == args["increment"] else args["init_cls"]
     logs_name = "logs/{}/{}/{}/{}".format(args["model_name"],args["dataset"], init_cls, args['increment'])
+    additional_logger_name = logs_name+"/"
     
     if not os.path.exists(logs_name):
         os.makedirs(logs_name)
@@ -60,11 +62,17 @@ def _train(args):
     
     args["nb_classes"] = data_manager.nb_classes # update args
     args["nb_tasks"] = data_manager.nb_tasks
-    model = factory.get_model(args["model_name"], args)
+    model = factory.get_model(args["model_name"], args, outpath=additional_logger_name)
 
     cnn_curve, nme_curve = {"top1": [], "top5": []}, {"top1": [], "top5": []}
     cnn_matrix, nme_matrix = [], []
 
+    average_incremental_accuracy = []
+    per_step_incremental_accuracy = []
+    all_results = []
+
+    method_emission_tracker = EmissionsTracker(log_level="critical", project_name="Method_{}".format(args["model_name"]), output_file=logfilename+"_{}_total_emissions.csv".format(args["model_name"]))
+    method_emission_tracker.start()
     for task in range(data_manager.nb_tasks):
         logging.info("All params: {}".format(count_parameters(model._network)))
         logging.info(
@@ -119,6 +127,11 @@ def _train(args):
             print('Average Accuracy (CNN):', sum(cnn_curve["top1"])/len(cnn_curve["top1"]))
             logging.info("Average Accuracy (CNN): {} \n".format(sum(cnn_curve["top1"])/len(cnn_curve["top1"])))
 
+        average_incremental_accuracy.append(sum(cnn_curve["top1"])/len(cnn_curve["top1"]))
+        per_step_incremental_accuracy.append(cnn_accy["grouped"]["total"])
+        all_results.append(cnn_accy)
+    method_emission_tracker.stop()
+
     if len(cnn_matrix) > 0:
         np_acctable = np.zeros([task + 1, task + 1])
         for idxx, line in enumerate(cnn_matrix):
@@ -139,6 +152,23 @@ def _train(args):
         print('Accuracy Matrix (NME):')
         print(np_acctable)
         logging.info('Forgetting (NME): {}'.format(forgetting))
+
+    # Save in file the average incremental accuracy
+    with open(additional_logger_name + "_average_incremental_accuracy.txt", "w") as file:
+        for item in average_incremental_accuracy:
+            file.write("%s\n" % item)
+    
+    # Save in file the per step incremental accuracy
+    with open(additional_logger_name + "_per_step_incremental_accuracy.txt", "w") as file:
+        for item in per_step_incremental_accuracy:
+            file.write("%s\n" % item)
+
+    # Save in file all results
+    with open(additional_logger_name + "_all_results.txt", "w") as file:
+        for item in all_results:
+            file.write("%s\n" % item)
+
+    model.convert_to_onnx(additional_logger_name)
 
 
 def _set_device(args):

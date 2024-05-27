@@ -10,12 +10,13 @@ from torch.utils.data import DataLoader
 from utils.inc_net import IncrementalNet
 from models.base import BaseLearner
 from utils.toolkit import target2onehot, tensor2numpy
+from codecarbon import EmissionsTracker
 
 num_workers = 8
 
 class Learner(BaseLearner):
-    def __init__(self, args):
-        super().__init__(args)
+    def __init__(self, args, outpath):
+        super().__init__(args, outpath)
         self._network = IncrementalNet(args, True)
 
     def after_task(self):
@@ -48,7 +49,12 @@ class Learner(BaseLearner):
 
         if len(self._multiple_gpus) > 1:
             self._network = nn.DataParallel(self._network, self._multiple_gpus)
+        
+        task_emission_tracker = EmissionsTracker(log_level="critical", project_name="FineTuning_Task_{}".format(self._cur_task), output_file=self.outpath+"_FineTuning_per_task_emissions.csv")
+        task_emission_tracker.start()
         self._train(self.train_loader, self.test_loader)
+        task_emission_tracker.stop()
+
         if len(self._multiple_gpus) > 1:
             self._network = self._network.module
 
@@ -80,6 +86,8 @@ class Learner(BaseLearner):
     def _init_train(self, train_loader, test_loader, optimizer, scheduler):
         prog_bar = tqdm(range(self.args["init_epoch"]))
         for _, epoch in enumerate(prog_bar):
+            epoch_emission_tracker = EmissionsTracker(log_level="critical", project_name="FineTuning_Task_{}_Epoch_{}".format(self._cur_task,epoch), output_file=self.outpath+"_FineTuning_per_epoch_emissions.csv")
+            epoch_emission_tracker.start()
             self._network.train()
             losses = 0.0
             correct, total = 0, 0
@@ -97,10 +105,11 @@ class Learner(BaseLearner):
                 correct += preds.eq(targets.expand_as(preds)).cpu().sum()
                 total += len(targets)
 
+            epoch_emission_tracker.stop()
             scheduler.step()
             train_acc = np.around(tensor2numpy(correct) * 100 / total, decimals=2)
 
-            if epoch % 5 == 0:
+            if epoch % 5 == 0 and False:
                 test_acc = self._compute_accuracy(self._network, test_loader)
                 info = "Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}, Test_accy {:.2f}".format(
                     self._cur_task,
@@ -130,6 +139,8 @@ class Learner(BaseLearner):
             self._network.train()
             losses = 0.0
             correct, total = 0, 0
+            epoch_emission_tracker = EmissionsTracker(log_level="critical", project_name="FineTuning_Task_{}_Epoch_{}".format(self._cur_task,epoch), output_file=self.outpath+"_FineTuning_per_epoch_emissions.csv")
+            epoch_emission_tracker.start()
             for i, (_, inputs, targets) in enumerate(train_loader):
                 inputs, targets = inputs.to(self._device), targets.to(self._device)
                 logits = self._network(inputs)["logits"]
@@ -150,9 +161,10 @@ class Learner(BaseLearner):
                 correct += preds.eq(targets.expand_as(preds)).cpu().sum()
                 total += len(targets)
 
+            epoch_emission_tracker.stop()
             scheduler.step()
             train_acc = np.around(tensor2numpy(correct) * 100 / total, decimals=2)
-            if epoch % 5 == 0:
+            if epoch % 5 == 0 and False: 
                 test_acc = self._compute_accuracy(self._network, test_loader)
                 info = "Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}, Test_accy {:.2f}".format(
                     self._cur_task,

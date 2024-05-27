@@ -11,7 +11,7 @@ EPSILON = 1e-8
 batch_size = 64
 
 class BaseLearner(object):
-    def __init__(self, args):
+    def __init__(self, args, outpath):
         self._cur_task = -1
         self._known_classes = 0
         self._total_classes = 0
@@ -26,6 +26,7 @@ class BaseLearner(object):
         self._device = args["device"][0]
         self._multiple_gpus = args["device"]
         self.args = args
+        self.outpath = outpath
 
     @property
     def exemplar_size(self):
@@ -96,6 +97,31 @@ class BaseLearner(object):
             "model_state_dict": self._network.state_dict(),
         }
         torch.save(save_dict, "{}_{}.pkl".format(filename, self._cur_task))
+
+
+    def convert_to_onnx(self, filename):
+        self._network.cpu()
+        self._network.eval()
+        input_names=["actual_input"]
+        output_names = ["output"]
+        save_dict = {
+            "tasks": self._cur_task,
+            "model_state_dict": self._network.state_dict(),
+        }
+        torch.save(save_dict, "{}_model_{}.pkl".format(filename, self._cur_task))
+        try:
+            torch.onnx.export(
+                self._network.cpu(), 
+                torch.randn(1, 3, 224, 224),
+                "{}_model_{}.onnx".format(filename, self._cur_task),
+                export_params=True,
+                opset_version=11,
+                input_names=input_names,
+                output_names=output_names)
+        except Exception as e:
+            print(e)
+            print("\nFailed to export to ONNX")
+
 
     def after_task(self):
         pass

@@ -10,14 +10,15 @@ from torch.utils.data import DataLoader
 from utils.inc_net import IncrementalNet,SimpleCosineIncrementalNet,SimpleVitNet
 from models.base import BaseLearner
 from utils.toolkit import target2onehot, tensor2numpy
+from codecarbon import EmissionsTracker
 
 
 num_workers = 8
 batch_size = 128
 
 class Learner(BaseLearner):
-    def __init__(self, args):
-        super().__init__(args)
+    def __init__(self, args, outpath):
+        super().__init__(args, outpath)
         self._network = SimpleVitNet(args, True)
         self.args = args
 
@@ -69,7 +70,11 @@ class Learner(BaseLearner):
         if len(self._multiple_gpus) > 1:
             print('Multiple GPUs')
             self._network = nn.DataParallel(self._network, self._multiple_gpus)
+        
+        task_emission_tracker = EmissionsTracker(log_level="critical", project_name="SimpleCil_Task_{}".format(self._cur_task), output_file=self.outpath+"_SimpleCil_per_task_emissions.csv")
+        task_emission_tracker.start()
         self._train(self.train_loader, self.test_loader, self.train_loader_for_protonet)
+        task_emission_tracker.stop()
         if len(self._multiple_gpus) > 1:
             self._network = self._network.module
 

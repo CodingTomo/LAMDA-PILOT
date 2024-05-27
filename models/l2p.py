@@ -9,13 +9,14 @@ from torch.utils.data import DataLoader
 from utils.inc_net import PromptVitNet
 from models.base import BaseLearner
 from utils.toolkit import tensor2numpy
+from codecarbon import EmissionsTracker
 
 # tune the model at first session with vpt, and then conduct simple shot.
 num_workers = 8
 
 class Learner(BaseLearner):
-    def __init__(self, args):
-        super().__init__(args)
+    def __init__(self, args, outpath):
+        super().__init__(args, outpath)
     
         self._network = PromptVitNet(args, True)
 
@@ -80,8 +81,11 @@ class Learner(BaseLearner):
 
         if self._cur_task > 0 and self.args["reinit_optimizer"]:
             optimizer = self.get_optimizer()
-            
+
+        task_emission_tracker = EmissionsTracker(log_level="critical", project_name="L2P_Task_{}".format(self._cur_task), output_file=self.outpath+"_L2P_per_task_emissions.csv")
+        task_emission_tracker.start()    
         self._init_train(train_loader, test_loader, optimizer, scheduler)
+        task_emission_tracker.stop()
 
     def get_optimizer(self):
         if self.args['optimizer'] == 'sgd':
@@ -168,6 +172,8 @@ class Learner(BaseLearner):
 
             losses = 0.0
             correct, total = 0, 0
+            epoch_emission_tracker = EmissionsTracker(log_level="critical", project_name="L2P_Task_{}_Epoch_{}".format(self._cur_task,epoch), output_file=self.outpath+"_L2P_per_epoch_emissions.csv")
+            epoch_emission_tracker.start()
             for i, (_, inputs, targets) in enumerate(train_loader):
                 inputs, targets = inputs.to(self._device), targets.to(self._device)
             
@@ -187,12 +193,12 @@ class Learner(BaseLearner):
                 _, preds = torch.max(logits, dim=1)
                 correct += preds.eq(targets.expand_as(preds)).cpu().sum()
                 total += len(targets)
-
+            epoch_emission_tracker.stop()
             if scheduler:
                 scheduler.step()
             train_acc = np.around(tensor2numpy(correct) * 100 / total, decimals=2)
 
-            if (epoch + 1) % 5 == 0:
+            if (epoch + 1) % 5 == 0 and False:
                 test_acc = self._compute_accuracy(self._network, test_loader)
                 info = "Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}, Test_accy {:.2f}".format(
                     self._cur_task,
