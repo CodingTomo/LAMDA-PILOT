@@ -7,7 +7,7 @@
     "shuffle": true,
     "init_cls": 10,
     "increment": 10,
-    "model_name": "finetune",
+    "model_name": "jointincremental",
     "backbone_type": "vit_base_patch16_224",
     "device": ["0"],
     "seed": [1993],
@@ -21,6 +21,6 @@
     "lrate": 1e-3,
     "milestones": [40, 70],
     "lrate_decay": 0.1,
-    "batch_size": 64,
+    "batch_size": 32,
     "weight_decay": 2e-4
 }

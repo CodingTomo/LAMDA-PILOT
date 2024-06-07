@@ -11,7 +11,7 @@
             "program": "main.py",
             "console": "integratedTerminal",
             "args": [
-                "--config", "/home/trinci/git/LAMDA-PILOT/exps/ranpac.json"
+                "--config", "/home/trinci/git/LAMDA-PILOT/exps/ranpac_inr.json"
             ]
         }
     ]

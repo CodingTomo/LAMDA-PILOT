@@ -16,7 +16,7 @@
     "init_lr": 0.05,
     "later_epochs": 20,
     "later_lr": 0.05,
-    "batch_size": 32,
+    "batch_size": 64,
     "weight_decay": 0.005,
     "min_lr": 0,
     "optimizer": "sgd",
