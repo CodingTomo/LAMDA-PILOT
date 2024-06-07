@@ -95,7 +95,7 @@ def get_backbone(args, pretrained=False):
             raise NotImplementedError("Inconsistent model name and model type")
     # L2P
     elif '_l2p' in name:
-        if args["model_name"] == "l2p":
+        if args["model_name"] == "l2p" or args["model_name"] == "l2p_wex":
             from backbone import vit_l2p
             model = timm.create_model(
                 args["backbone_type"],
@@ -116,6 +116,7 @@ def get_backbone(args, pretrained=False):
                 head_type=args["head_type"],
                 use_prompt_mask=args["use_prompt_mask"],
             )
+            model.out_dim = 768
             return model
         else:
             raise NotImplementedError("Inconsistent model name and model type")
@@ -578,6 +579,13 @@ class PromptVitNet(nn.Module):
 
         x = self.backbone(x, task_id=task_id, cls_features=cls_features, train=train)
         return x
+    
+    @property
+    def feature_dim(self):
+        return self.backbone.out_dim
+    
+    def extract_vector(self, x):
+        return self.backbone(x)["pre_logits"]
 
 # coda_prompt
 class CodaPromptVitNet(nn.Module):

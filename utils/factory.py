@@ -12,12 +12,16 @@ def get_model(model_name, args, outpath):
         from models.adam_adapter import Learner
     elif name == "l2p":
         from models.l2p import Learner
+    elif name == "l2p_wex":
+        from models.l2p_wex import Learner
     elif name == "dualprompt":
         from models.dualprompt import Learner
     elif name == "coda_prompt":
         from models.coda_prompt import Learner
     elif name == "finetune":
         from models.finetune import Learner
+    elif name == "jointincremental":
+        from models.jointincremental import Learner
     elif name == "icarl":
         from models.icarl import Learner
     elif name == "der":
