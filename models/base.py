@@ -6,6 +6,8 @@ from torch import nn
 from torch.utils.data import DataLoader
 from utils.toolkit import tensor2numpy, accuracy
 from scipy.spatial.distance import cdist
+from codecarbon import EmissionsTracker
+import time
 
 EPSILON = 1e-8
 batch_size = 64
@@ -121,6 +123,61 @@ class BaseLearner(object):
         except Exception as e:
             print(e)
             print("\nFailed to export to ONNX")
+
+    
+    def inference_gpu_time(self, model_name, outpath):
+        self._network.to(self._device)
+        self._network.eval()
+        dummy_input = torch.randn(1, 3, 224, 224).to(self._device)
+
+        starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+        repetitions = 500
+        timings=np.zeros((repetitions,1))
+
+        #GPU-WARM-UP
+        for _ in range(10):
+            _ = self._network(dummy_input)
+
+        print("Measuring the inference time on GPU for {}...".format(model_name))
+        with torch.no_grad():
+            inference_tracker = EmissionsTracker(log_level="critical", project_name="Method_{}".format(model_name), output_file=outpath+"_{}_gpu_inference_emissions.csv".format(model_name))
+            inference_tracker.start()
+            for rep in range(repetitions):
+                starter.record()
+                self._network(dummy_input)
+                ender.record()
+                torch.cuda.synchronize()
+                curr_time = starter.elapsed_time(ender)
+                timings[rep] = curr_time
+            inference_tracker.stop()
+        mean_syn = np.sum(timings) / repetitions
+        std_syn = np.std(timings)
+        print("GPU Mean: {}. GPU Std: {}".format(mean_syn, std_syn))
+        np.save(outpath+"_{}_gpu_inference_time.npy".format(model_name), timings)
+
+
+    def inference_cpu_time(self, model_name, outpath):
+        self._network.cpu()
+        self._network.eval()
+        dummy_input = torch.randn(1, 3, 224, 224).cpu()
+        repetitions = 50
+        timings=np.zeros((repetitions,1))
+
+        print("Measuring the inference time on CPU for {}...".format(model_name))
+        with torch.no_grad():
+            inference_tracker = EmissionsTracker(log_level="critical", project_name="Method_{}".format(model_name), output_file=outpath+"_{}_cpu_inference_emissions.csv".format(model_name))
+            inference_tracker.start()
+            for rep in range(repetitions):
+                start_time = time.time()
+                self._network(dummy_input)
+                duration = (time.time() - start_time)*1000
+                timings[rep] = duration
+            inference_tracker.stop()
+        mean_syn = np.sum(timings) / repetitions
+        std_syn = np.std(timings)
+        print("CPU Mean: {}. CPU Std: {}".format(mean_syn, std_syn))
+        np.save(outpath+"_{}_cpu_inference_time.npy".format(model_name), timings)
+
 
 
     def after_task(self):

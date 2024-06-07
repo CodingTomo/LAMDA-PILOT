@@ -71,7 +71,7 @@ def _train(args):
     per_step_incremental_accuracy = []
     all_results = []
 
-    method_emission_tracker = EmissionsTracker(log_level="critical", project_name="Method_{}".format(args["model_name"]), output_file=logfilename+"_{}_total_emissions.csv".format(args["model_name"]))
+    method_emission_tracker = EmissionsTracker(log_level="critical", project_name="Method_{}".format(args["model_name"]), output_file=additional_logger_name+"_{}_total_emissions.csv".format(args["model_name"]))
     method_emission_tracker.start()
     for task in range(data_manager.nb_tasks):
         logging.info("All params: {}".format(count_parameters(model._network)))
@@ -169,6 +169,8 @@ def _train(args):
             file.write("%s\n" % item)
 
     model.convert_to_onnx(additional_logger_name)
+    model.inference_gpu_time(args["model_name"], additional_logger_name)
+    model.inference_cpu_time(args["model_name"], additional_logger_name)
 
 
 def _set_device(args):
