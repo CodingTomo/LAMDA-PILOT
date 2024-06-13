@@ -68,24 +68,30 @@ class Learner(BaseLearner):
 
         if self._cur_task == 0:
             optimizer = optim.SGD(
-                self._network.parameters(),
+                [
+                      {'params':self._network.backbone.parameters()},
+                      {'params':self._network.fc.parameters(),'lr':0.01}
+                ],
                 momentum=0.9,
-                lr=self.args["init_lr"],
-                weight_decay=self.args["init_weight_decay"],
+                lr=0.0001,
+                weight_decay=0.0005,
             )
             scheduler = optim.lr_scheduler.MultiStepLR(
-                optimizer=optimizer, milestones=self.args["init_milestones"], gamma=self.args["init_lr_decay"]
+                optimizer=optimizer, milestones=[1000], gamma=self.args["init_lr_decay"]
             )
             self._init_train(train_loader, test_loader, optimizer, scheduler)
         else:
             optimizer = optim.SGD(
-                self._network.parameters(),
-                lr=self.args["lrate"],
+                [
+                      {'params':self._network.backbone.parameters()},
+                      {'params':self._network.fc.parameters(),'lr':0.01}
+                ],
                 momentum=0.9,
-                weight_decay=self.args["weight_decay"],
-            )  # 1e-5
+                lr=0.0001,
+                weight_decay=0.0005,
+            )
             scheduler = optim.lr_scheduler.MultiStepLR(
-                optimizer=optimizer, milestones=self.args["milestones"], gamma=self.args["lrate_decay"]
+                optimizer=optimizer, milestones=[1000], gamma=self.args["lrate_decay"]
             )
             self._update_representation(train_loader, test_loader, optimizer, scheduler)
 
