@@ -21,7 +21,7 @@
     "lrate": 1e-3,
     "milestones": [80, 120],
     "lrate_decay": 0.1,
-    "batch_size": 64,
+    "batch_size": 56,
     "weight_decay": 2e-4,
     "T": 2
 }
