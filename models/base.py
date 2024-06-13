@@ -138,7 +138,7 @@ class BaseLearner(object):
         for _ in range(10):
             _ = self._network(dummy_input)
 
-        print("Measuring the inference time on GPU for {}...".format(model_name))
+        print("[GENERIC METHOD] Measuring the inference time on GPU for {}...".format(model_name))
         with torch.no_grad():
             inference_tracker = EmissionsTracker(log_level="critical", project_name="Method_{}".format(model_name), output_file=outpath+"_{}_gpu_inference_emissions.csv".format(model_name))
             inference_tracker.start()

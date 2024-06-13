@@ -168,3 +168,34 @@ class Learner(BaseLearner):
             prog_bar.set_description(info)
 
         logging.info(info)
+
+    
+    def inference_gpu_time(self, model_name, outpath):
+        self._network.to(self._device)
+        self._network.eval()
+        dummy_input = torch.randn(1, 3, 224, 224).to(self._device)
+
+        starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+        repetitions = 500
+        timings=np.zeros((repetitions,1))
+
+        #GPU-WARM-UP
+        for _ in range(10):
+            _ = self._network(dummy_input)
+
+        print("Measuring the inference time on GPU for {}...".format(model_name))
+        with torch.no_grad():
+            inference_tracker = EmissionsTracker(log_level="critical", project_name="Method_{}".format(model_name), output_file=outpath+"_{}_gpu_inference_emissions.csv".format(model_name))
+            inference_tracker.start()
+            for rep in range(repetitions):
+                starter.record()
+                self._network(dummy_input)
+                ender.record()
+                torch.cuda.synchronize()
+                curr_time = starter.elapsed_time(ender)
+                timings[rep] = curr_time
+            inference_tracker.stop()
+        mean_syn = np.sum(timings) / repetitions
+        std_syn = np.std(timings)
+        print("GPU Mean: {}. GPU Std: {}".format(mean_syn, std_syn))
+        np.save(outpath+"_{}_gpu_inference_time.npy".format(model_name), timings)
