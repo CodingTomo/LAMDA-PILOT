@@ -6,3 +6,6 @@ __pycache__/
 *.ipynb
 *.pdf
 _logs/
+_logs_dn/
+_inference/
+_logs_cosine/
