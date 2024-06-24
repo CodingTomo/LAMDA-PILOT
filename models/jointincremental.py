@@ -7,7 +7,7 @@ from tqdm import tqdm
 from torch import optim
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
-from utils.inc_net import IncrementalNet
+from utils.inc_net import IncrementalNet, JointIncrementalNet
 from models.base import BaseLearner
 from utils.toolkit import target2onehot, tensor2numpy
 from codecarbon import EmissionsTracker
@@ -17,7 +17,7 @@ num_workers = 8
 class Learner(BaseLearner):
     def __init__(self, args, outpath):
         super().__init__(args, outpath)
-        self._network = IncrementalNet(args, True)
+        self._network = JointIncrementalNet(args, True)
 
     def after_task(self):
         self._known_classes = self._total_classes
