@@ -1,6 +1,6 @@
 {
     "prefix": "benchmark",
-    "dataset": "imagenetr",
+    "dataset": "domainnet",
     "memory_size": 4000,
     "memory_per_class": 20,
     "fixed_memory": true,
