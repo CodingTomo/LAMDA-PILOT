@@ -77,7 +77,7 @@ def build_transform_coda_prompt(is_train, args):
         return transform
 
     t = []
-    if args["dataset"].startswith("imagenet"):
+    if args["dataset"].startswith("imagenet") or args["dataset"].startswith("domainnet"):
         t = [
             transforms.Resize(256),
             transforms.CenterCrop(224),
@@ -264,6 +264,66 @@ class iDomainNet(iData):
     def get_train_val_images_domainnet(self, data_path):
         train_annotations = open(os.path.join(data_path, "DomainNet",  "cs_train_6.txt"), "r")
         test_annotations = open(os.path.join(data_path, "DomainNet",  "cs_test_6.txt"), "r")
+
+        train_lines = train_annotations.readlines()
+        test_lines = test_annotations.readlines() 
+
+        train_images = []
+        train_labels = []
+        for item in train_lines:
+            splitted_item = item.rstrip()
+            splitted_item  = splitted_item.split(" ")
+            image_path = "/".join([splitted_item[0].split("/")[0],splitted_item[0].split("/")[1], splitted_item[0].split("/")[2]])
+            image_path = os.path.join(data_path, 'DomainNet', image_path)
+            train_images.append(image_path)
+            train_labels.append(int(splitted_item[1]))
+        
+        train_images = np.array(train_images)
+        train_targets = np.array(train_labels)
+        
+        test_images = []
+        test_labels = []
+        for item in test_lines:
+            splitted_item = item.rstrip()
+            splitted_item  = splitted_item.split(" ")
+            image_path = "/".join([splitted_item[0].split("/")[0], splitted_item[0].split("/")[1], splitted_item[0].split("/")[2]])
+            image_path = os.path.join(data_path, 'DomainNet', image_path)
+            test_images.append(image_path)
+            test_labels.append(int(splitted_item[1]))
+        
+        test_images = np.array(test_images)
+        test_targets = np.array(test_labels)
+
+        return train_images, train_targets, test_images, test_targets
+    
+class iTinyDomainNet(iData):
+    def __init__(self, args):
+        super().__init__()
+        self.args = args
+        self.use_path = True
+
+        if args["model_name"] == "coda_prompt":
+            self.train_trsf = build_transform_coda_prompt(True, args)
+            self.test_trsf = build_transform_coda_prompt(False, args)
+        else:
+            self.train_trsf = build_transform(True, args)
+            self.test_trsf = build_transform(False, args)
+        self.common_trsf = [
+            # transforms.ToTensor(),
+        ]
+
+        self.class_order = np.arange(300).tolist()
+
+    def download_data(self):
+        # assert 0, "You should specify the folder of your dataset"
+        train_test_dir = "/Scratch/Magistri/cl_data"
+
+        self.train_data, self.train_targets, self.test_data, self.test_targets = self.get_train_val_images_domainnet(train_test_dir)
+
+
+    def get_train_val_images_domainnet(self, data_path):
+        train_annotations = open(os.path.join(data_path, "DomainNet",  "cs_tiny_train.txt"), "r")
+        test_annotations = open(os.path.join(data_path, "DomainNet",  "cs_tiny_test.txt"), "r")
 
         train_lines = train_annotations.readlines()
         test_lines = test_annotations.readlines() 
