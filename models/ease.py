@@ -349,6 +349,8 @@ class Learner(BaseLearner):
 
                 correct += preds.eq(aux_targets.expand_as(preds)).cpu().sum()
                 total += len(aux_targets)
+                if self.args["only_inference"] == "y":
+                    break
             epoch_emission_tracker.stop()
             if scheduler:
                 scheduler.step()
@@ -432,16 +434,16 @@ class Learner(BaseLearner):
         dummy_input = torch.randn(1, 3, 224, 224).to(self._device)
 
         starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
-        repetitions = 500
+        repetitions = 10000
         timings=np.zeros((repetitions,1))
 
         #GPU-WARM-UP
-        for _ in range(10):
+        for _ in range(100):
             _ = self._network(dummy_input)
 
         print("Measuring the inference time on GPU for {}...".format(model_name))
         with torch.no_grad():
-            inference_tracker = EmissionsTracker(log_level="critical", project_name="Method_{}".format(model_name), output_file=outpath+"_{}_gpu_inference_emissions.csv".format(model_name))
+            inference_tracker = EmissionsTracker(log_level="critical", project_name="EASE_inference_Task_{}".format(self._cur_task), output_file=self.outpath+"_EASE_per_task_inference_emissions.csv")
             inference_tracker.start()
             for rep in range(repetitions):
                 starter.record()

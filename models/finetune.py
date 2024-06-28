@@ -104,23 +104,13 @@ class Learner(BaseLearner):
                 _, preds = torch.max(logits, dim=1)
                 correct += preds.eq(targets.expand_as(preds)).cpu().sum()
                 total += len(targets)
-
+                if self.args["only_inference"] == "y":
+                    break
             epoch_emission_tracker.stop()
             scheduler.step()
             train_acc = np.around(tensor2numpy(correct) * 100 / total, decimals=2)
 
-            if epoch % 5 == 0 and False:
-                test_acc = self._compute_accuracy(self._network, test_loader)
-                info = "Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}, Test_accy {:.2f}".format(
-                    self._cur_task,
-                    epoch + 1,
-                    self.args["init_epoch"],
-                    losses / len(train_loader),
-                    train_acc,
-                    test_acc,
-                )
-            else:
-                info = "Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}".format(
+            info = "Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}".format(
                     self._cur_task,
                     epoch + 1,
                     self.args["init_epoch"],
@@ -160,22 +150,14 @@ class Learner(BaseLearner):
                 _, preds = torch.max(logits, dim=1)
                 correct += preds.eq(targets.expand_as(preds)).cpu().sum()
                 total += len(targets)
+                if self.args["only_inference"] == "y":
+                    break
 
             epoch_emission_tracker.stop()
             scheduler.step()
             train_acc = np.around(tensor2numpy(correct) * 100 / total, decimals=2)
-            if epoch % 5 == 0 and False: 
-                test_acc = self._compute_accuracy(self._network, test_loader)
-                info = "Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}, Test_accy {:.2f}".format(
-                    self._cur_task,
-                    epoch + 1,
-                    self.args["epochs"],
-                    losses / len(train_loader),
-                    train_acc,
-                    test_acc,
-                )
-            else:
-                info = "Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}".format(
+    
+            info = "Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}".format(
                     self._cur_task,
                     epoch + 1,
                     self.args["epochs"],
@@ -184,3 +166,34 @@ class Learner(BaseLearner):
                 )
             prog_bar.set_description(info)
         logging.info(info)
+
+
+    def inference_gpu_time(self, model_name, outpath):
+        self._network.to(self._device)
+        self._network.eval()
+        dummy_input = torch.randn(1, 3, 224, 224).to(self._device)
+
+        starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+        repetitions = 10000
+        timings=np.zeros((repetitions,1))
+
+        #GPU-WARM-UP
+        for _ in range(100):
+            _ = self._network(dummy_input)
+
+        print("Measuring the inference time on GPU for {}...".format(model_name))
+        with torch.no_grad():
+            inference_tracker = EmissionsTracker(log_level="critical", project_name="FineTuning_inference_Task_{}".format(self._cur_task), output_file=self.outpath+"_FineTuning_per_task_inference_emissions.csv")
+            inference_tracker.start()
+            for rep in range(repetitions):
+                starter.record()
+                self._network(dummy_input)
+                ender.record()
+                torch.cuda.synchronize()
+                curr_time = starter.elapsed_time(ender)
+                timings[rep] = curr_time
+            inference_tracker.stop()
+        mean_syn = np.sum(timings) / repetitions
+        std_syn = np.std(timings)
+        print("GPU Mean: {}. GPU Std: {}".format(mean_syn, std_syn))
+        np.save(outpath+"_{}_gpu_inference_time.npy".format(model_name), timings)
