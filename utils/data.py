@@ -77,7 +77,7 @@ def build_transform_coda_prompt(is_train, args):
         return transform
 
     t = []
-    if args["dataset"].startswith("imagenet") or args["dataset"].startswith("domainnet"):
+    if args["dataset"].startswith("imagenet") or args["dataset"].startswith("domainnet") or args["dataset"].startswith("tinydomainnet"):
         t = [
             transforms.Resize(256),
             transforms.CenterCrop(224),

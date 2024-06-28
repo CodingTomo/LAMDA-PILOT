@@ -447,7 +447,7 @@ class BaseLearner(object):
                     np.array(vectors[i])
                 )  # New object to avoid passing by inference
 
-                if data_manager.dataset_name != "domainnet":
+                if data_manager.dataset_name not in ["domainnet","tinydomainnet"]:
                     vectors = np.delete(
                         vectors, i, axis=0
                     )  # Remove it to avoid duplicative selection
