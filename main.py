@@ -12,6 +12,10 @@ def main():
             param["init_epoch"] = 2
         if "epochs" in param.keys():
             param["epochs"] = 2
+        if "later_epochs" in param.keys():
+            param["later_epochs"] = 2
+        if "init_epochs" in param.keys():
+            param["init_epochs"] = 2
     args = vars(args) # Converting argparse Namespace to a dict.
     args.update(param) # Add parameters from json
 

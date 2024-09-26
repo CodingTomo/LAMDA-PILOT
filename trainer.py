@@ -170,7 +170,6 @@ def _train(args):
         for item in all_results:
             file.write("%s\n" % item)
 
-    model.convert_to_onnx(additional_logger_name)
     model.inference_gpu_time(args["model_name"], additional_logger_name)
     model.inference_cpu_time(args["model_name"], additional_logger_name)
 

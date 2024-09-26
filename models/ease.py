@@ -439,7 +439,7 @@ class Learner(BaseLearner):
 
         #GPU-WARM-UP
         for _ in range(100):
-            _ = self._network(dummy_input)
+            _ = self._network(dummy_input, test=True)
 
         print("Measuring the inference time on GPU for {}...".format(model_name))
         with torch.no_grad():
